@@ -80,6 +80,23 @@ function xmldb_adobeconnect_upgrade($oldversion=0) {
         upgrade_mod_savepoint(true, 2012012500, 'adobeconnect');
 
     }
+	if ($oldversion < 2015123101){
+
+		$table = new xmldb_table('acusers');
+		$table->add_field('id', XMLDB_TYPE_INTEGER, '11', true, true, XMLDB_SEQUENCE, null, null);
+		$table->add_field('password', XMLDB_TYPE_CHAR, '191', true, true, null, null, 'id');
+		$table->add_field('acuser', XMLDB_TYPE_CHAR, '191', true, true, null, null, 'password');
+		$table->add_field('userset', XMLDB_TYPE_INTEGER, '11', true, false, false, '0', 'acuser');
+		$table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'), null, null); 
+		$table->add_key('unique', XMLDB_KEY_UNIQUE, array('acuser'), null, null); 
+
+
+		if (!$dbman->table_exists($table)){
+			$dbman->create_table($table);
+		}
+
+        upgrade_mod_savepoint(true, 2015123101, 'adobeconnect');
+	}
 
     return true;
 

@@ -43,6 +43,21 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configpasswordunmask('adobeconnect_admin_password', get_string('admin_password', 'adobeconnect'),
                        get_string('admin_password_desc', 'adobeconnect'), ''));
+                       //============ START Auto-Login===================>
+                       $settings->add(new admin_setting_configselect('adobeconnect_login_type',
+                       get_string('login_type', 'adobeconnect'),get_string('login_type_desc',
+                       'adobeconnect'),'getparams',array('getparams' =>
+                       get_string('login_type_getparams','adobeconnect'),
+                       'httpauth'=>get_string('login_type_httpauth','adobeconnect'))));
+
+                       if ( $CFG->adobeconnect_login_type == 'httpauth' ) {
+                       $settings->add(new admin_setting_configtext('adobeconnect_admin_httpauth',
+                       get_string('admin_httpauth', 'adobeconnect'),
+                       get_string('admin_httpauth_desc', 'adobeconnect'), 'my-user-id', PARAM_TEXT));
+                       }
+                       //============ END Auto-Login ===================|
+
+
 
     $settings->add(new admin_setting_configtext('adobeconnect_admin_httpauth', get_string('admin_httpauth', 'adobeconnect'),
                        get_string('admin_httpauth_desc', 'adobeconnect'), 'my-user-id', PARAM_TEXT));
@@ -52,6 +67,9 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('adobeconnect_https', get_string('https', 'adobeconnect'),
                        get_string('https_desc', 'adobeconnect'), '0'));
+
+    $settings->add(new admin_setting_configcheckbox('adobeconn_expose_pass', get_string('exposetoall', 'adobeconnect'),
+                       get_string('exposetoall_desc', 'adobeconnect'), '0'));
 
 
     $url = $CFG->wwwroot . '/mod/adobeconnect/conntest.php';

@@ -70,15 +70,15 @@ class mod_adobeconnect_mod_form extends moodleform_mod {
         $attributes=array('size'=>'20');
         $mform->addElement('text', 'meeturl', get_string('meeturl', 'adobeconnect'), $attributes);
         $mform->setType('meeturl', PARAM_PATH);
-        $mform->addHelpButton('meeturl', 'meeturl', 'adobeconnect');
+//        $mform->addHelpButton('meeturl', 'meeturl', 'adobeconnect');
 //        $mform->addHelpButton('meeturl', array('meeturl', get_string('meeturl', 'adobeconnect'), 'adobeconnect'));
-        $mform->disabledIf('meeturl', 'tempenable', 'eq', 0);
+        $mform->disabledIf('meeturl', 'isupdate', 'eq', '1');
+        //$mform->disabledIf('meeturl', 'meeturl');
 
         // Public or private meeting
         $meetingpublic = array(1 => get_string('public', 'adobeconnect'), 0 => get_string('private', 'adobeconnect'));
         $mform->addElement('select', 'meetingpublic', get_string('meetingtype', 'adobeconnect'), $meetingpublic);
         $mform->addHelpButton('meetingpublic', 'meetingtype', 'adobeconnect');
-//        $mform->addHelpButton('meetingpublic', array('meetingtype', get_string('meetingtype', 'adobeconnect'), 'adobeconnect'));
 
         // Meeting Template
         $templates = array();
@@ -92,6 +92,9 @@ class mod_adobeconnect_mod_form extends moodleform_mod {
 
         $mform->addElement('hidden', 'tempenable');
         $mform->setType('tempenable', PARAM_INT);
+
+        $mform->addElement('hidden', 'isupdate');
+        $mform->setType('isupdate', PARAM_INT);
 
         $mform->addElement('hidden', 'userid');
         $mform->setType('userid', PARAM_INT);
@@ -120,6 +123,7 @@ class mod_adobeconnect_mod_form extends moodleform_mod {
         global $CFG, $DB;
 
         if (array_key_exists('update', $default_values)) {
+			$default_values['isupdate'] = 1;
 
             $params = array('instanceid' => $default_values['id']);
             $sql = "SELECT id FROM {adobeconnect_meeting_groups} WHERE ".
@@ -157,43 +161,7 @@ class mod_adobeconnect_mod_form extends moodleform_mod {
             $namematches = array();
         }
 
-        // Now search for existing meeting room URLs
-        $url = $data['meeturl'];
-        $url = $data['meeturl'] = adobeconnect_clean_meet_url($data['meeturl']);
 
-        // Check to see if there are any trailing slashes or additional parts to the url
-        // ex. mymeeting/mysecondmeeting/  Only the 'mymeeting' part is valid
-        if ((0 != substr_count($url, '/')) and (false !== strpos($url, '/', 1))) {
-            $errors['meeturl'] = get_string('invalidadobemeeturl', 'adobeconnect');
-        }
-
-        $filter = array('filter-like-url-path' => $url);
-        $urlmatches = aconnect_meeting_exists($aconnect, $meetfldscoid, $filter);
-
-        /// Search the user's adobe connect folder
-        if (!empty($usrfldscoid)) {
-            $urlmatches = $urlmatches + aconnect_meeting_exists($aconnect, $usrfldscoid, $filter);
-        }
-
-        if (empty($urlmatches)) {
-            $urlmatches = array();
-        } else {
-
-            // format url for comparison
-            if ((false === strpos($url, '/')) or (0 != strpos($url, '/'))) {
-                $url = '/' . $url;
-            }
-
-        }
-
-        // Check URL for correct length and format
-        if (strlen($data['meeturl']) > 60) {
-            $errors['meeturl'] = get_string('longurl', 'adobeconnect');
-        } elseif (empty($data['meeturl'])) {
-            // Do nothing
-        } elseif (!preg_match('/^[a-z][a-z\-]*/i', $data['meeturl'])) {
-            $errors['meeturl'] = get_string('invalidurl', 'adobeconnect');
-        }
 
         // Check for available groups if groupmode is selected
         if ($data['groupmode'] > 0) {
@@ -219,6 +187,12 @@ class mod_adobeconnect_mod_form extends moodleform_mod {
                 $errors['name'] = get_string('duplicatemeetingname', 'adobeconnect');
                 return $errors;
             }
+			// Check if url exists
+			$meetingfromurl = aconnect_meeting_by_url($aconnect, $data['meeturl']);
+			if($meetingfromurl>1){
+				$errors['meeturl'] = get_string('meetingurlexists','mod_adobeconnect').$meetingfromurl;
+			}	
+
 
             // Check Adobe connect server for duplicated names
             foreach($namematches as $matchkey => $match) {
@@ -226,14 +200,6 @@ class mod_adobeconnect_mod_form extends moodleform_mod {
                     $errors['name'] = get_string('duplicatemeetingname', 'adobeconnect');
                 }
             }
-
-            foreach($urlmatches as $matchkey => $match) {
-                $matchurl = rtrim($match->url, '/');
-                if (0 == substr_compare($matchurl, $url . '_', 0, strlen($url . '_'), false)) {
-                    $errors['meeturl'] = get_string('duplicateurl', 'adobeconnect');
-                }
-            }
-
         } else {
             // Updating activity
             // Look for existing meeting names, excluding this activity's group meeting(s)
@@ -254,15 +220,6 @@ class mod_adobeconnect_mod_form extends moodleform_mod {
                     }
                 }
             }
-
-            foreach($urlmatches as $matchkey => $match) {
-                if (!array_key_exists($match->scoid, $grpmeetings)) {
-                    if (0 == substr_compare($match->url, $url . '_', 0, strlen($url . '_'), false)) {
-                        $errors['meeturl'] = get_string('duplicateurl', 'adobeconnect');
-                    }
-                }
-            }
-
             // Validate start and end times
             if ($data['starttime'] == $data['endtime']) {
                 $errors['starttime'] = get_string('samemeettime', 'adobeconnect');

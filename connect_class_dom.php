@@ -148,6 +148,7 @@ class connect_class_dom extends connect_class {
      * Sends the HTTP header login request and returns the response xml
      * @param string username username to use for header x-user-id
      */
+
     public function request_http_header_login($return_header = 0, $username = '', $stop = false) {
         global $CFG;
 
@@ -166,7 +167,54 @@ class connect_class_dom extends connect_class {
 
         return $this->_xmlresponse;
     }
+	/* * 
+	 * Rewriten function to work with adobeconnect enchanced security
+	 * Will log in the user set and after login get a new cookie and set the object cookie variable to 
+	 * the new cookie which will be used in subsequent calls
+	 * @param string $username username/email of the account
+	 * @param string $password password of the account to be logged in
+	 * @return string session cookie
+	 * */
+public function request_user_login($username,$password) {
+	$https = $this->get_https();
+	if($https){
+		$url = 'https://'.$this->get_serverurl();
+	}
+	else{
+		$url = 'http://'.$this->get_serverurl();
+	}
+	$call = $url."?action=login&login=".urlencode(trim($username))."&password=".urlencode(trim($password));
 
+	$ch=curl_init($call);  
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);  
+	curl_setopt($ch, CURLOPT_HEADER, 1);  
+	$response = curl_exec($ch);  
+
+	curl_close($ch);  
+	$breeze_session_first_strip = strstr($response, 'BREEZESESSION');  
+	$breeze_session_second_strip = strstr($breeze_session_first_strip, ';', true);  
+	$breeze_session = str_replace('BREEZESESSION=', '', $breeze_session_second_strip);  
+	$this->_cookie = $breeze_session;
+
+	return $breeze_session;
+}
+/* *
+ * This function sets the password of the specified user to a new one
+ * @param int $username id of the user in question (principal_id)
+ * @param password the new password to be set for the user
+ */
+public function set_new_user_password($username, $password){
+	$params = array(
+		'action' => 'user-update-pwd',
+		'user-id' => $username,
+		'password' => $password,
+		'password-verify' => $password
+	);
+
+	$this->create_request($params, true);
+	return;
+}
    private function create_http_head_login_xml() {
         $params = array('action' => 'login',
                         'external-auth' => 'use',

@@ -4,9 +4,8 @@
 }
 
 .aconmeetinforow {
-    margin-left:auto;
-    margin-right:auto;
-    width:60%;
+	margin-left:10px;
+
   }
 
 .aconmeetinforow .aconlabeltitle {
@@ -18,15 +17,52 @@
 }
 
 .aconbtnrow {
-    margin-left:auto;
-    margin-right:auto;
-    width:50%;
-    text-align:center;
+    margin-left:10px;
+	margin-top:20px;
+}
+.aconbtnrow input{
+	margin-right:20px;
+	margin-left:0px;
+}
+.aconviewform{
 }
 
 .aconbtnrow .aconbtnjoin, .aconbtnrow .aconbtnroles {
     display: inline;
 
+}
+.aconbtnjoin{
+	margin-right:20px;
+}
+.acsettings{
+	float: right;
+}
+.aconlabeltitle{
+	line-height:14px;
+	margin-bottom:10px;
+}
+.aconlabeltitle label{
+	line-height:14px;
+	margin-bottom:0px;
+}
+.aconlabeltext{
+	line-height:14px;
+	margin-bottom:30px;
+}
+.aconlabeltext label{
+	line-height:16px;
+	margin-bottom:0px;
+}
+#meetingsummary{
+	padding-top: 0px !important;
+	margin-left:10px;
+}
+
+.aconbtnjoin input,
+.aconbtnroles input{
+	background: inherit;
+    border: none;
+    color: inherit;
 }
 
 #aconmeetnametitle {
@@ -56,4 +92,39 @@
 #aconmeeturlinfo {
     margin-right: 20px;
 }
+.aconrecording{
+    width: 100%;
+    background-color: #fafafa;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 10px;
+}
+.aconrecordingrow{
+	margin: 5px 0px;
+}
+.aconrecording img{
+	margin-right:10px;
+}
+.aconsetpw div{
+	display:block;
+	float:none;
+	margin-top:5px;
+}
+.acaction .fitem .col-md-3{
+	 display:none;
+ }
+ .acaction .fitem .col-md-9{
+	 padding-left:12px;
+ }
+ .onlyforac{
+    background-color: #f2dede;
+    border-color: #ebcccc;
+    color: #a94442;
+	padding: 10px;
+    border-radius: 4px;
+ }
+ .modtype_adobeconnect .editing_duplicate{
+	 display:none;
+ }
+
 

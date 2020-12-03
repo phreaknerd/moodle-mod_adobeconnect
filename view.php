@@ -94,7 +94,18 @@ if (($formdata = data_submitted($CFG->wwwroot . '/mod/adobeconnect/view.php')) &
 $usrobj = new stdClass();
 $usrobj = clone($USER);
 
-$usrobj->username = set_username($usrobj->username, $usrobj->email);
+//============ START Auto-Login ===================>
+if (isset($CFG->adobeconnect_email_login) and
+!empty($CFG->adobeconnect_email_login)) {
+$usrobj->username = $usrobj->email;
+}
+$usrobj->password = aconnect_create_user_password($usrobj->email);
+if ( $usrobj->username == $CFG->adobeconnect_admin_login ) {
+$usrobj->password = $CFG->adobeconnect_admin_password;
+} 
+//============ ENDE Auto-Login ===================|
+
+
 
 /// Print the page header
 $url = new moodle_url('/mod/adobeconnect/view.php', array('id' => $cm->id));
@@ -233,7 +244,7 @@ if (!empty($meetscoids)) {
 }
 
 // Log in the current user
-$login = $usrobj->username;
+/*$login = $usrobj->username;
 $password  = $usrobj->username;
 $https = false;
 
@@ -244,7 +255,29 @@ if (isset($CFG->adobeconnect_https) and (!empty($CFG->adobeconnect_https))) {
 $aconnect = new connect_class_dom($CFG->adobeconnect_host, $CFG->adobeconnect_port,
                                   '', '', '', $https);
 
+$aconnect->request_http_header_login(1, $login);*/
+//============ START Auto-Login ===================>
+// Log in the current user
+$login = $usrobj->username;
+$password = $usrobj->password;
+if ( $login == $CFG->adobeconnect_admin_login ) {
+$password = $CFG->adobeconnect_admin_password;
+}
+$https = false;
+
+if (isset($CFG->adobeconnect_https) and (!empty($CFG->adobeconnect_https))) {
+$https = true;
+}
+
+$aconnect = new connect_class_dom($CFG->adobeconnect_host,
+$CFG->adobeconnect_port,
+'', '', '', $https);
+if ( $CFG->adobeconnect_login_type == 'httpauth' ) {
 $aconnect->request_http_header_login(1, $login);
+} else {
+$aconnect->request_user_login($login, $password);
+}
+//============ ENDE Auto-Login ===================|
 $adobesession = $aconnect->get_cookie();
 
 // The batch of code below handles the display of Moodle groups
@@ -394,7 +427,7 @@ $meetingdetail->endtime = $time;
 $meetingdetail->intro = $adobeconnect->intro;
 $meetingdetail->introformat = $adobeconnect->introformat;
 
-echo $OUTPUT->box_start('generalbox', 'meetingsummary');
+//echo $OUTPUT->box_start('generalbox', 'meetingsummary');
 
 // If groups mode is enabled for the activity and the user belongs to a group
 if (NOGROUPS != $cm->groupmode && 0 != $groupid) {
@@ -410,7 +443,7 @@ if (NOGROUPS != $cm->groupmode && 0 != $groupid) {
     echo $renderer->display_no_groups_message();
 }
 
-echo $OUTPUT->box_end();
+//echo $OUTPUT->box_end();
 
 echo '<br />';
 
@@ -420,7 +453,9 @@ if (!$adobeconnect->meetingpublic) {
 
     // Check capabilities
     if (has_capability('mod/adobeconnect:meetingpresenter', $context, $usrobj->id) or
-        has_capability('mod/adobeconnect:meetingparticipant', $context, $usrobj->id)) {
+        has_capability('mod/adobeconnect:meetingparticipant', $context, $usrobj->id) 
+        //added Vesna
+        or has_capability('mod/adobeconnect:meetinghost', $context, $usrobj->id)) {
         $showrecordings = true;
     }
 } else {

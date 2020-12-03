@@ -178,7 +178,13 @@ class connect_class {
        }
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $this->_xmlrequest);
+
+        if (strpos($this->_xmlrequest,'principal-update')) {
+		    curl_setopt($ch, CURLOPT_POSTFIELDS, urldecode($this->_xmlrequest));
+	      } else {
+		  curl_setopt($ch, CURLOPT_POSTFIELDS, $this->_xmlrequest);
+	      }
+
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_USERAGENT, $_SERVER['HTTP_USER_AGENT']);
 

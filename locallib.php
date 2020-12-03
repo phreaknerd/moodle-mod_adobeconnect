@@ -109,17 +109,12 @@ function adobe_connection_test($host = '', $port = 80, $username = '',
             // print success
             echo '<p style="color:#006633">successfully obtained the session key: ' . $aconnectDOM->get_cookie() . '</p>';
 
-            // test logging in as the administrator
-            $params = array(
-                  'action' => 'login',
-                  'login' => $aconnectDOM->get_username(),
-                  'password' => $aconnectDOM->get_password(),
-            );
+			$test = $aconnectDOM->request_user_login($aconnectDOM->get_username(), $aconnectDOM->get_password());
+			$cookie = $aconnectDOM->get_cookie();
 
-            $aconnectDOM->create_request($params);
-
-            if ($aconnectDOM->call_success()) {
+//            if ($aconnectDOM->call_success()) {
                 echo '<p style="color:#006633">successfully logged in as admin user</p>';
+				echo "<p style='color:#006633'>New session cookie: $cookie</p>";
                 //$username
 
                 //Test retrevial of folders
@@ -169,8 +164,9 @@ function adobe_connection_test($host = '', $port = 80, $username = '',
                 $meeting->starttime = $time;
                 $time = $time + (60 * 60);
                 $meeting->endtime = $time;
+				$meetingscoid = aconnect_create_meeting($aconnectDOM, $meeting, $folderscoid);
 
-                if (($meetingscoid = aconnect_create_meeting($aconnectDOM, $meeting, $folderscoid))) {
+                if (($meetingscoid )) {
                     echo '<p style="color:#006633">successfully created meeting <b>testmeetingtest</b> scoid: '. $meetingscoid . '</p>';
                 } else {
 
@@ -185,7 +181,15 @@ function adobe_connection_test($host = '', $port = 80, $username = '',
                 $user->firstname = 'testusertest';
                 $user->lastname = 'testusertest';
                 $user->email = 'testusertest@test.com';
+                //============ START Auto-Login===================>
+				try{
+                $user->password = aconnect_create_user_password($user->email);
+				}catch(Exception $e){
+					print_r($e);
+					$user->password = "testpassword";
+				}
 
+                //============ ENDE Auto-Login ===================|
                 if (!empty($emaillogin)) {
                     $user->username = $user->email;
                 }
@@ -253,9 +257,9 @@ function adobe_connection_test($host = '', $port = 80, $username = '',
                 }
 
 
-            } else {
-                echo '<p style="color:#680000">logging in as '. $username . ' was not successful, check to see if the username and password are correct </p>';
-            }
+            // } else {
+            //     echo '<p style="color:#680000">logging in as '. $username . ' was not successful, check to see if the username and password are correct </p>';
+            // }
 
        }
 
@@ -327,6 +331,8 @@ function aconnect_get_folder_sco_id($xml, $folder) {
 
 /**
  * Log in as the admin user.  This should only be used to conduct API calls.
+ * *Edit* This function is updated due to Enchanced security on Adobeconnect, and uses
+ * the function request_user_login inside the aconnect_class_dom class
  */
 function aconnect_login() {
     global $CFG, $USER, $COURSE;
@@ -365,23 +371,23 @@ function aconnect_login() {
                                       '',
                                       $https);
 
-    $params = array(
-        'action' => 'common-info'
-    );
+    // $params = array(
+    //     'action' => 'common-info'
+    // );
 
-    $aconnect->create_request($params);
+    // $aconnect->create_request($params);
 
-    $aconnect->read_cookie_xml($aconnect->_xmlresponse);
+    // $aconnect->read_cookie_xml($aconnect->_xmlresponse);
 
-    $params = array(
-          'action' => 'login',
-          'login' => $aconnect->get_username(),
-          'password' => $aconnect->get_password(),
-    );
+    // $params = array(
+    //       'action' => 'login',
+    //       'login' => $aconnect->get_username(),
+    //       'password' => $aconnect->get_password(),
+    // );
+    // $aconnect->create_request($params);
+	$cookie = $aconnect->request_user_login($aconnect->get_username(), $aconnect->get_password());
 
-    $aconnect->create_request($params);
-
-    if ($aconnect->call_success()) {
+    if ($cookie) {
         $aconnect->set_connection(1);
     } else {
         $aconnect->set_connection(0);
@@ -590,107 +596,113 @@ function aconnect_return_all_templates($xml) {
  * @return mixed array an array of object with the recording sco-id
  * as the key and the recording properties as properties
  */
-function aconnect_get_recordings($aconnect, $folderscoid, $sourcescoid) {
-    $params = array('action' => 'sco-contents',
-                    'sco-id' => $folderscoid,
-                    //'filter-source-sco-id' => $sourcescoid,
-                    'sort-name' => 'asc',
-                    );
+ function aconnect_get_recordings($aconnect, $folderscoid, $sourcescoid) {
+     $params = array('action' => 'sco-contents',
+                     'sco-id' => $folderscoid,
+                     //'filter-source-sco-id' => $sourcescoid,
+                     'sort-name' => 'asc',
+                     );
 
-    // Check if meeting scoid and folder scoid are the same
-    // If hey are the same then that means that forced recordings is not
-    // enabled filter-source-sco-id should not be included.  If the
-    // meeting scoid and folder scoid are not equal then forced recordings
-    // are enabled and we can use filter by filter-source-sco-id
-    // Thanks to A. gtdino
-    if ($sourcescoid != $folderscoid) {
-        $params['filter-source-sco-id'] = $sourcescoid;
-    }
+     // Check if meeting scoid and folder scoid are the same
+     // If hey are the same then that means that forced recordings is not
+     // enabled filter-source-sco-id should not be included.  If the
+     // meeting scoid and folder scoid are not equal then forced recordings
+     // are enabled and we can use filter by filter-source-sco-id
+     // Thanks to A. gtdino
+     if ($sourcescoid != $folderscoid) {
+         $params['filter-source-sco-id'] = $sourcescoid;
+     }
 
-    $aconnect->create_request($params);
+     $aconnect->create_request($params);
 
-    $recordings = array();
+     $recordings = array();
 
-    if ($aconnect->call_success()) {
-        $dom = new DomDocument();
-        $dom->loadXML($aconnect->_xmlresponse);
+     if ($aconnect->call_success()) {
+         $dom = new DomDocument();
+         $dom->loadXML($aconnect->_xmlresponse);
 
-        $domnodelist = $dom->getElementsByTagName('scos');
+         $domnodelist = $dom->getElementsByTagName('scos');
 
-        if (!empty($domnodelist->length)) {
+         if (!empty($domnodelist->length)) {
 
-//            for ($i = 0; $i < $domnodelist->length; $i++) {
+ //            for ($i = 0; $i < $domnodelist->length; $i++) {
 
-                $innernodelist = $domnodelist->item(0)->getElementsByTagName('sco');
+                 $innernodelist = $domnodelist->item(0)->getElementsByTagName('sco');
 
-                if (!empty($innernodelist->length)) {
+                 if (!empty($innernodelist->length)) {
 
-                    for ($x = 0; $x < $innernodelist->length; $x++) {
+                     for ($x = 0; $x < $innernodelist->length; $x++) {
 
-                        if ($innernodelist->item($x)->hasAttributes()) {
+                         if ($innernodelist->item($x)->hasAttributes()) {
 
-                            $domnode = $innernodelist->item($x)->attributes->getNamedItem('sco-id');
+                             $domnode = $innernodelist->item($x)->attributes->getNamedItem('sco-id');
 
-                            if (!is_null($domnode)) {
-                                $meetingdetail = $innernodelist->item($x);
+                             if (!is_null($domnode)) {
+                                 $meetingdetail = $innernodelist->item($x);
 
-                                // Check if the SCO item is a recording or uploaded document.  We only want to display recordings
-                                if (!is_null($meetingdetail->getElementsByTagName('duration')->item(0))) {
+                                 // Check if the SCO item is a recording or uploaded document.  We only want to display recordings
+                                 //In AC9, the recording length info is stored as an attributed of 'sco'
+                                 $recordingvac9 = $innernodelist->item($x)->attributes->getNamedItem('duration');
+                                 //In AC-8 and before, the recording length info is stored as its own element
+                                 $recordingvac8 = $meetingdetail->getElementsByTagName('duration')->item(0);
+                                 //In AC9, many objects have a 'recording' attribute defined, but only recordings have a non-empty value.
+                                 // So check the attribute has a value (in minutes, can be rounded to 0 if short, so can't use !empty())
+                                 if ((!is_null($recordingvac9) && $recordingvac9->nodeValue !== '') || !is_null($recordingvac8)) {
 
-                                    $j = (int) $domnode->nodeValue;
-                                    $value = (!is_null($meetingdetail->getElementsByTagName('name'))) ?
-                                             $meetingdetail->getElementsByTagName('name')->item(0)->nodeValue : '';
+                                     $j = (int) $domnode->nodeValue;
+                                     $value = (!is_null($meetingdetail->getElementsByTagName('name'))) ?
+                                              $meetingdetail->getElementsByTagName('name')->item(0)->nodeValue : '';
 
-                                    $recordings[$j]->name = (string) $value;
+                                     $recordings[$j]->name = (string) $value;
 
-                                    $value = (!is_null($meetingdetail->getElementsByTagName('url-path'))) ?
-                                             $meetingdetail->getElementsByTagName('url-path')->item(0)->nodeValue : '';
+                                     $value = (!is_null($meetingdetail->getElementsByTagName('url-path'))) ?
+                                              $meetingdetail->getElementsByTagName('url-path')->item(0)->nodeValue : '';
 
-                                    $recordings[$j]->url = (string) $value;
+                                     $recordings[$j]->url = (string) $value;
 
-                                    $value = (!is_null($meetingdetail->getElementsByTagName('date-begin'))) ?
-                                             $meetingdetail->getElementsByTagName('date-begin')->item(0)->nodeValue : '';
+                                     $value = (!is_null($meetingdetail->getElementsByTagName('date-begin'))) ?
+                                              $meetingdetail->getElementsByTagName('date-begin')->item(0)->nodeValue : '';
 
-                                    $recordings[$j]->startdate = (string) $value;
+                                     $recordings[$j]->startdate = (string) $value;
 
-                                    $value = (!is_null($meetingdetail->getElementsByTagName('date-end'))) ?
-                                             $meetingdetail->getElementsByTagName('date-end')->item(0)->nodeValue : '';
+                                     $value = (!is_null($meetingdetail->getElementsByTagName('date-end'))) ?
+                                              $meetingdetail->getElementsByTagName('date-end')->item(0)->nodeValue : '';
 
-                                    $recordings[$j]->enddate = (string) $value;
+                                     $recordings[$j]->enddate = (string) $value;
 
-                                    $value = (!is_null($meetingdetail->getElementsByTagName('date-created'))) ?
-                                             $meetingdetail->getElementsByTagName('date-created')->item(0)->nodeValue : '';
+                                     $value = (!is_null($meetingdetail->getElementsByTagName('date-created'))) ?
+                                              $meetingdetail->getElementsByTagName('date-created')->item(0)->nodeValue : '';
 
-                                    $recordings[$j]->createdate = (string) $value;
+                                     $recordings[$j]->createdate = (string) $value;
 
-                                    $value = (!is_null($meetingdetail->getElementsByTagName('date-modified'))) ?
-                                             $meetingdetail->getElementsByTagName('date-modified')->item(0)->nodeValue : '';
+                                     $value = (!is_null($meetingdetail->getElementsByTagName('date-modified'))) ?
+                                              $meetingdetail->getElementsByTagName('date-modified')->item(0)->nodeValue : '';
 
-                                    $recordings[$j]->modified = (string) $value;
+                                     $recordings[$j]->modified = (string) $value;
 
-                                    $value = (!is_null($meetingdetail->getElementsByTagName('duration'))) ?
-                                             $meetingdetail->getElementsByTagName('duration')->item(0)->nodeValue : '';
+                                     $value = (!is_null($recordingvac9) ?
+                                              $recordingvac9->nodeValue : $recordingvac8->nodeValue);
 
-                                    $recordings[$j]->duration = (string) $value;
+                                     $recordings[$j]->duration = (string) $value;
 
-                                    $recordings[$j]->sourcesco = (int) $sourcescoid;
-                                }
+                                     $recordings[$j]->sourcesco = (int) $sourcescoid;
+                                 }
 
-                            }
-                        }
-                    }
-                }
-//            }
+                             }
+                         }
+                     }
+                 }
+ //            }
 
-            return $recordings;
-        } else {
-            return false;
-        }
-    } else {
-        return false;
-    }
+             return $recordings;
+         } else {
+             return false;
+         }
+     } else {
+         return false;
+     }
 
-}
+ }
 
 /**
  * Parses XML and returns the meeting sco-id
@@ -999,24 +1011,42 @@ function aconnect_get_user_principal_id($xml) {
  * found or error occured
  */
 function aconnect_user_exists($aconnect, $usrdata) {
-    $params = array(
-        'action' => 'principal-list',
-        'filter-login' => $usrdata->username,
+  $params = array(
+      'action' => 'principal-list',
+      'filter-login' => $usrdata->username,
 //            'filter-type' => 'meeting',
 // add more filters if this process begins to get slow
-    );
+  );
 
-    $aconnect->create_request($params);
+  $aconnect->create_request($params);
 
-    if ($aconnect->call_success()) {
-        return aconnect_get_user_principal_id($aconnect->_xmlresponse);
-    } else {
-        return false;
-    }
+  if ($aconnect->call_success()) {
+      $principal_id = aconnect_get_user_principal_id($aconnect->_xmlresponse);
+
+
+      global $CFG, $USER, $DB;
+
+      $user_table = $DB->get_record('user',array('id'=> $USER->id));
+      $acinfo=$DB->get_record('acusers',array('acuser'=>$USER->email));
+      $user_pass=$acinfo->password;
+
+	$key = $CFG->adobeconnectkey;
+
+	$password=rtrim(mcrypt_decrypt(MCRYPT_RIJNDAEL_256, md5($key), base64_decode($user_pass), MCRYPT_MODE_CBC, md5(md5($key))), "\0");
+           return $principal_id;
+
+  } else {
+      return false;
+  }
 
 
 }
-
+/**
+ * This function deletes a user from adobeconnect.
+ * @param $aconnect Valid adobeconnect object from the adobeconnect_class_dom with initialized login
+ * @param $principalid Id number of the user to be removed
+ * @return true on successful deletion false on failure
+ * */
 function aconnect_delete_user($aconnect, $principalid = 0) {
 
     if (empty($principalid)) {
@@ -1051,19 +1081,22 @@ function aconnect_delete_user($aconnect, $principalid = 0) {
 function aconnect_create_user($aconnect, $usrdata) {
     $principal_id = false;
 
-    $params = array(
-        'action' => 'principal-update',
-        'first-name' => $usrdata->firstname,
-        'last-name' => $usrdata->lastname,
-        'login' => $usrdata->username,
-        'password' => strtoupper(md5($usrdata->username . time())),
-        'extlogin' => $usrdata->username,
-        'type' => 'user',
-        'send-email' => 'false',
-        'has-children' => 0,
-        'email' => $usrdata->email,
-    );
-
+	$params = array(
+	'action' => 'principal-update',
+	//============ START Auto-Login ===================>
+	'first-name' => urlencode($usrdata->firstname),
+	'last-name' => urlencode($usrdata->lastname),
+	//============ END Auto-Login ===================|
+	'login' => $usrdata->username,
+	//============ START Auto-Login ===================>
+	'password' => $usrdata->password,//strtoupper(md5($usrdata->username.time())),
+	//============ END Auto-Login ===================|
+	'extlogin' => $usrdata->username,
+	'type' => 'user',
+	'send-email' => 'false',
+	'has-children' => 0,
+	'email' => $usrdata->email,
+	);
     $aconnect->create_request($params);
 
     if ($aconnect->call_success()) {
@@ -1098,13 +1131,19 @@ function aconnect_assign_user_perm($aconnect, $usrprincipal, $meetingscoid, $typ
 
     if ($aconnect->call_success()) {
           return true;
-//        print_object($aconnect->_xmlresponse);
     } else {
           return false;
-//        print_object($aconnect->_xmlresponse);
     }
 }
-
+/*
+ * function aconnect_remove_user_perm
+ *
+ * @param $aconnect Valid adobeconnect object from adobeconnect_class_dom
+ * @param $usrprincipal principalid of the user in question
+ * @param $meetingscoid scoid of the meeting
+ * @return true on success false on failure
+ *
+ * */
 function aconnect_remove_user_perm($aconnect, $usrprincipal, $meetingscoid) {
     $params = array(
         'action' => 'permissions-update',
@@ -1445,47 +1484,188 @@ function get_connect_username($userid) {
 
     return $username;
 }
-
+//============ START Auto-Login ===================>
 /**
- * TEST FUNCTIONS - DELETE THIS AFTER COMPLETION OF TEST
+ * This function grabs the user's password from the internal database for the given user. If the user
+ * does not have a password, it is automatically generated for him.
+ * @param string $inputString The username/email of the account in question
+ * @return the String of the password in plain
  */
+function aconnect_create_user_password($inputString) {
+  global $CFG, $USER, $DB;
+  $key=$CFG->adobeconnectkey;
+
+  //$user_table = $DB->get_record('user',array('id'=> $USER->id));
+  if($password_exists = $DB->get_record('acusers',array('acuser'=> $inputString))){
+    $password=$password_exists->password;
+    $seed=mcrypt_decrypt(MCRYPT_RIJNDAEL_256, md5("$key"), base64_decode($password), MCRYPT_MODE_CBC, md5(md5("$key")));
+  }
+  else{ //generate password
+    $eseed=explode("@",$USER->email);
+    $seed=$eseed[0].time();
+    $password=base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256, md5("$key"), $seed, MCRYPT_MODE_CBC, md5(md5("$key"))));
+    $params->password=$password;
+    $params->acuser=$inputString;
+	$params->userset = 0;
+    $DB->insert_record('acusers',$params);
+  }
+  return $seed;
+}
 /*
-function texpandsco ($aconnect, $scoid) {
-    global $USER;
+ * This function rewrites the user password in our database. The passwords are stored encrypted inside the database
+ * so all the encryption is handled by this function
+ * @param $acname the adobeconnect username/email of the account
+ * @param $newpass the new password for the user to be set in the database
+ * @param $bool is the password user set or randomly generated? True if set by user and should be flagged as such and displayed in the field
+ * @return returns true on success DB connection failures may result in exceptions thrown
+ */
+function rewrite_user_password($acname, $newpass, $bool=0){
+	global $CFG, $USER, $DB;
+	$key = $CFG->adobeconnectkey;
+	if($record_exists = $DB->get_record('acusers', array('acuser'=>$acname))){
+		$record_exists->password=base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256, md5("$key"), $newpass, MCRYPT_MODE_CBC, md5(md5("$key"))));
+		$record_exists->userset= ($bool ? 1 : 0);
+		$is_updated = $DB->update_record('acusers', $record_exists);
+	}
+	else {
+		$obj = new stdClass();
+		$obj->acuser= $acname;
+		$obj->password=base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256, md5("$key"), $newpass, MCRYPT_MODE_CBC, md5(md5("$key"))));
+		$obj->userset= ($bool ? 1 : 0);
+		$DB->insert_record('acusers', $obj);
+	}
+	return true;
+}
+/* This function generates a password for the user
+ * it is used to generate a random password for the users that don't/shouldn't know their passwords.
+ * it does not take any input parameters
+ * @return String of letters and numbers (not that hard to see how it works)
+ * */
+function generate_seed(){
+  global $CFG, $USER, $DB;
+  $eseed=explode("@",$USER->email);
+  $seed=$eseed[0].time();
+  return $seed;
+}
+/* This function is called to initiate password reset for the logged in user
+ * with adobeconnect. It uses the adobeconnect services to reset the password of the logged
+ * user on adobeconnect and set that password inside the moodle database
+ * does not take any input parameters.
+ * May throw exception on database/services Failure
+ * @return true on success
+ * */
+function init_password_reset(){
+	global $USER, $CFG;
 
-    $folderscoid = false;
-    $params = array('action' => 'sco-expanded-contents',
-                    'sco-id' => $scoid,
-                    'filter-name' => $USER->email);
+	$password = generate_seed();
+	$acuser = $USER->username;
+	if (isset($CFG->adobeconnect_email_login) and !empty($CFG->adobeconnect_email_login)) {
+		$acuser = $USER->email;
+	}
+    $aconnect = new connect_class_dom($CFG->adobeconnect_host, $CFG->adobeconnect_port,'', '', '', $CFG->adobeconnect_https);
+    $aconnect->request_user_login($CFG->adobeconnect_admin_login, $CFG->adobeconnect_admin_password);
+	$usrdata->username=$acuser;
+	$principal_id = aconnect_user_exists($aconnect, $usrdata);
 
-    $aconnect->create_request($params);
+	$params = array(
+		'action' => 'user-update-pwd',
+		'user-id' => $principal_id,
+		'password' => $password,
+		'password-verify' => $password,
+	);
+	$aconnect->create_request($params);
+	rewrite_user_password($acuser, $password, 0);
+	return true;
 
-//    if ($aconnect->call_success()) {
-//    }
+}
+/* This function checks if a meeting exists with the specific url on adobeconnect
+ * if it does it returns the id number of the meeting
+ * @param Object $aconnect Object of the adobeconnect_class_dom class
+ * @param $uri - the uri of the meeting name taken from the meeting path https://myac.adobeconnect.com/$uri/
+ * @return returns integer of the id number or false on failure
+ * */
+function aconnect_meeting_by_url($aconnect, $uri){
+	$params = array(
+		'action' => 'sco-by-url',
+		'url-path' => $uri,
+	);
+	$aconnect->create_request($params);
+    if ($aconnect->call_success()) {
+        $dom = new DomDocument();
+        $dom->loadXML($aconnect->_xmlresponse);
+
+        $domnodelist = $dom->getElementsByTagName('sco')->item(0);
+		if(!empty($domnodelist)){
+			$number = $domnodelist->getAttribute('sco-id');
+			return $number;
+		}
+		else{
+			return 0;
+		}
+	}
+	else{
+		return 0;
+	}
+	return 0;
+}
+/* *
+ * This function checks if the user has a valid login session or not
+ * @param object $aconnect
+ * @return integer $userscoid
+ * */
+function check_if_user_logged_in($aconnect){
+	$params = array('action' => 'common-info',
+				);
+	$aconnect->create_request($params);
+
+    if ($aconnect->call_success()) {
+        $dom = new DomDocument();
+        $dom->loadXML($aconnect->_xmlresponse);
+
+        $domnodelist = $dom->getElementsByTagName('user')->item(0);
+		if(!empty($domnodelist)){
+			$number = $domnodelist->getAttribute('user-id');
+			return $number;
+		}
+		else{
+			return 0;
+		}
+	}
+	else{
+		return 0;
+	}
+	return 0;
+
+
+}
+/* This function checks if the user is the one who set the password and
+ * it is not auto generated for him. If it's set by him return the pass else return false
+ * @param string $acname Username/email of the user in question
+ * @return string(the user password) or false
+ */
+function check_if_userset_pw($acname){
+	global $CFG, $DB;
+	$key = $CFG->adobeconnectkey;
+	if($record_exists = $DB->get_record('acusers', array('acuser'=>$acname))){
+		if($record_exists->userset){
+    		$password=mcrypt_decrypt(MCRYPT_RIJNDAEL_256, md5("$key"), base64_decode($record_exists->password), MCRYPT_MODE_CBC, md5(md5("$key")));
+			return trim($password);
+		}
+	}
+	return 0;
 
 }
 
-function tout ($data) {
-    $filename = '/tmp/tout.xml';
-    $somecontent = $data;
 
-    if (is_writable($filename)) {
-        if (!$handle = fopen($filename, 'w')) {
-             echo "Cannot open file ($filename)";
-             return;
-        }
 
-        // Write $somecontent to our opened file.
-        if (fwrite($handle, $somecontent) === FALSE) {
-            echo "Cannot write to file ($filename)";
-            return;
-        }
-
-        //echo "Success, wrote ($somecontent) to file ($filename)";
-
-        fclose($handle);
-
-    } else {
-        echo "The file $filename is not writable";
-    }
-} */
+/**
+* Replaces some characters in user's name
+*
+* @param string $inputString the string that holds the name
+* @return the String with replaced characters
+*/
+function aconnect_clear_name($inputString) {
+  $s = array( "ä", "ö", "ü", "æ", "ø", "å", "ß", "Ä", "Ö", "Ü", "Æ", "Ø", "Å" );
+	$r = array( "ae", "oe", "ue", "ae", "o", "aa", "ss", "Ae", "Oe", "Ue", "Ae", "O", "Aa");
+	return str_replace($s,$r,$inputString);
+}

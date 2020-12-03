@@ -52,9 +52,18 @@ require_login($course, true, $cm);
 // Check if the user's email is the Connect Pro user's login
 $usrobj = new stdClass();
 $usrobj = clone($USER);
-$usrobj->username = set_username($usrobj->username, $usrobj->email);
+if (isset($CFG->adobeconnect_email_login) and
+!empty($CFG->adobeconnect_email_login)) {
+  $usrobj->username = $usrobj->email;
+}
 
-$usrcanjoin = false;
+$usrobj->password = aconnect_create_user_password($usrobj->email);
+if ( $usrobj->username == $CFG->adobeconnect_admin_login ) {
+  $usrobj->password = $CFG->adobeconnect_admin_password;
+}
+$password=$usrobj->password;
+//$usrobj->username = set_username($usrobj->username, $usrobj->email);
+//$usrcanjoin = false;
 
 $context = context_module::instance($cm->id);
 
@@ -179,9 +188,8 @@ if ($usrcanjoin and confirm_sesskey($sesskey)) {
         $validuser = false;
         notice(get_string('unableretrdetails', 'adobeconnect'), $url);
     }
-
+    $password = $usrobj->password;
     aconnect_logout($aconnect);
-
     // User is either valid or invalid, if valid redirect user to the meeting url
     if (empty($validuser)) {
         notice(get_string('notparticipant', 'adobeconnect'), $url);
@@ -196,11 +204,18 @@ if ($usrcanjoin and confirm_sesskey($sesskey)) {
             $protocol = 'https://';
             $https = true;
         }
+        $aconnect = new connect_class_dom($CFG->adobeconnect_host, $CFG->adobeconnect_port,'', '', '', $https);
+        if ( $CFG->adobeconnect_login_type == 'httpauth' ) {
+          $aconnect->request_http_header_login(1, $login);
+        } else {
+          $aconnect->request_user_login($login, $password);
+		  $cookie = $aconnect->get_cookie();
+			$test=check_if_user_logged_in($aconnect);
 
-        $aconnect = new connect_class_dom($CFG->adobeconnect_host, $CFG->adobeconnect_port,
-                                          '', '', '', $https);
+        }
 
-        $aconnect->request_http_header_login(1, $login);
+      //  $aconnect->request_http_header_login(1, $login);
+
 
         // Include the port number only if it is a port other than 80
         $port = '';
@@ -217,6 +232,12 @@ if ($usrcanjoin and confirm_sesskey($sesskey)) {
         );
         $event = \mod_adobeconnect\event\adobeconnect_join_meeting::create($params);
         $event->trigger();
+		$redirlink = $protocol.$CFG->adobeconnect_meethost.$port.$meeting->url."?session=".$aconnect->get_cookie();
+
+		if(!$test){
+			echo "<script type='text/javascript'>alert('".get_string('couldnoterror','mod_adobeconnect')."');window.location='$redirlink';</script>";
+			exit;
+		}
 
         redirect($protocol . $CFG->adobeconnect_meethost . $port
                  . $meeting->url
