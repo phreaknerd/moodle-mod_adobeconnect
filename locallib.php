@@ -739,7 +739,8 @@ function aconnect_get_meeting_scoid($xml) {
 function aconnect_update_meeting($aconnect, $meetingobj, $meetingfdl) {
     $params = array('action' => 'sco-update',
                     'sco-id' => $meetingobj->scoid,
-                    'name' => htmlentities($meetingobj->name, ENT_COMPAT, 'UTF-8'),
+                    'name' => aconnect_clear_name($meetingobj->name),
+//                    'name' => htmlentities($meetingobj->name, ENT_COMPAT, 'UTF-8'),
                     'folder-id' => $meetingfdl,
 // updating meeting URL using the API corrupts the meeting for some reason
 //                    'url-path' => '/'.$meetingobj->meeturl,
@@ -857,7 +858,8 @@ function aconnect_create_meeting($aconnect, $meetingobj, $meetingfdl) {
 
     $params = array('action' => 'sco-update',
                     'type' => 'meeting',
-                    'name' => htmlentities($meetingobj->name, ENT_COMPAT, 'UTF-8'),
+                    'name' => aconnect_clear_name($meetingobj->name),
+                    //'name' => htmlentities($meetingobj->name, ENT_COMPAT, 'UTF-8'),
                     'folder-id' => $meetingfdl,
                     'date-begin' => $starttime,
                     'date-end' => $endtime,
