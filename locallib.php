@@ -1511,6 +1511,11 @@ function aconnect_create_user_password($inputString) {
 	$params->userset = 0;
     $DB->insert_record('acusers',$params);
   }
+
+  //AC server rejects to create accounts if the password is longer than 32 characters
+  $eseed=explode("@",$USER->email);
+  if(empty(trim($seed))) $seed = $eseed[0].time();
+  if(strlen($seed) > 32) $seed = substr($seed, 0, 32); //if string is longer than 32 chars, remove the rest
   return $seed;
 }
 /*
