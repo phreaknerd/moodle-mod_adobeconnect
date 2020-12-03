@@ -128,10 +128,12 @@ $sql = "SELECT meetingscoid ".
 $meetscoids = $DB->get_records_sql($sql, $params);
 $recording = array();
 
+$aconnect = false;
+
 if (!empty($meetscoids)) {
     $recscoids = array();
 
-    $aconnect = aconnect_login();
+    if(empty($aconnect)) $aconnect = aconnect_login();
 
     // Get the forced recordings folder sco-id
     // Get recordings that are based off of the meeting
@@ -240,7 +242,7 @@ if (!empty($meetscoids)) {
         aconnect_assign_user_perm($aconnect, $usrprincipal, $fldid, ADOBE_VIEW_ROLE);
     }
 
-    aconnect_logout($aconnect);
+    //aconnect_logout($aconnect);
 }
 
 // Log in the current user
@@ -269,13 +271,15 @@ if (isset($CFG->adobeconnect_https) and (!empty($CFG->adobeconnect_https))) {
 $https = true;
 }
 
+if(!$aconnect) {
 $aconnect = new connect_class_dom($CFG->adobeconnect_host,
 $CFG->adobeconnect_port,
-'', '', '', $https);
+'', '', '', $https,$CFG->adobeconnect_timeout);
 if ( $CFG->adobeconnect_login_type == 'httpauth' ) {
 $aconnect->request_http_header_login(1, $login);
 } else {
 $aconnect->request_user_login($login, $password);
+}
 }
 //============ ENDE Auto-Login ===================|
 $adobesession = $aconnect->get_cookie();
@@ -325,7 +329,7 @@ if ($cm->groupmode) {
 }
 
 
-$aconnect = aconnect_login();
+if(!$aconnect) $aconnect = aconnect_login();
 
 // Get the Meeting details
 $cond = array('instanceid' => $adobeconnect->id, 'groupid' => $groupid);
@@ -362,7 +366,6 @@ if (($meeting = aconnect_meeting_exists($aconnect, $meetfldscoid, $filter))) {
     }
 }
 
-aconnect_logout($aconnect);
 
 $sesskey = !empty($usrobj->sesskey) ? $usrobj->sesskey : '';
 
@@ -493,6 +496,8 @@ $params = array(
 
 $event = \mod_adobeconnect\event\adobeconnect_view::create($params);
 $event->trigger();
+
+if(!empty($aconnect)) aconnect_logout($aconnect);
 
 /// Finish the page
 echo $OUTPUT->footer();

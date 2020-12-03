@@ -28,8 +28,8 @@ class connect_class_dom extends connect_class {
 
     public function __construct($serverurl = '', $serverport = '',
                                 $username = '', $password = '',
-                                $cookie = '', $https) {
-        parent::__construct($serverurl, $serverport, $username, $password, $cookie, $https);
+                                $cookie = '', $https = false, $timeout = 0) {
+        parent::__construct($serverurl, $serverport, $username, $password, $cookie, $https, $timeout);
 
     }
 
@@ -185,13 +185,13 @@ public function request_user_login($username,$password) {
 	}
 	$call = $url."?action=login&login=".urlencode(trim($username))."&password=".urlencode(trim($password));
 
-	$ch=curl_init($call);  
+  $ch = $this->_curlconnection;  
+  curl_setopt($ch, CURLOPT_URL, $call);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);  
 	curl_setopt($ch, CURLOPT_HEADER, 1);  
 	$response = curl_exec($ch);  
 
-	curl_close($ch);  
 	$breeze_session_first_strip = strstr($response, 'BREEZESESSION');  
 	$breeze_session_second_strip = strstr($breeze_session_first_strip, ';', true);  
 	$breeze_session = str_replace('BREEZESESSION=', '', $breeze_session_second_strip);  

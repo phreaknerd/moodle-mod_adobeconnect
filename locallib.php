@@ -45,7 +45,7 @@ define('ADOBE_TMZ_LENGTH', 6);
 
 function adobe_connection_test($host = '', $port = 80, $username = '',
                                $password = '', $httpheader = '',
-                               $emaillogin, $https = false) {
+                               $emaillogin, $https = false, $timeout = 0) {
 
     if (empty($host) or
         empty($port) or (0 == $port) or
@@ -67,7 +67,9 @@ function adobe_connection_test($host = '', $port = 80, $username = '',
                                          $username,
                                          $password,
                                          '',
-                                         $https);
+                                         $https,
+                                         $timeout
+                                       );
 
     $params = array(
         'action' => 'common-info'
@@ -369,7 +371,8 @@ function aconnect_login() {
                                       $CFG->adobeconnect_admin_login,
                                       $CFG->adobeconnect_admin_password,
                                       '',
-                                      $https);
+                                      $https,
+                                      $CFG->adobeconnect_timeout);
 
     // $params = array(
     //     'action' => 'common-info'
@@ -1513,6 +1516,7 @@ function aconnect_create_user_password($inputString) {
   }
 
   //AC server rejects to create accounts if the password is longer than 32 characters
+  //dirty hack use password
   $eseed=explode("@",$USER->email);
   if(empty(trim($seed))) $seed = $eseed[0].time();
   if(strlen($seed) > 32) $seed = substr($seed, 0, 32); //if string is longer than 32 chars, remove the rest
@@ -1569,7 +1573,7 @@ function init_password_reset(){
 	if (isset($CFG->adobeconnect_email_login) and !empty($CFG->adobeconnect_email_login)) {
 		$acuser = $USER->email;
 	}
-    $aconnect = new connect_class_dom($CFG->adobeconnect_host, $CFG->adobeconnect_port,'', '', '', $CFG->adobeconnect_https);
+    $aconnect = new connect_class_dom($CFG->adobeconnect_host, $CFG->adobeconnect_port,'', '', '', $CFG->adobeconnect_https,$CFG->adobeconnect_timeout);
     $aconnect->request_user_login($CFG->adobeconnect_admin_login, $CFG->adobeconnect_admin_password);
 	$usrdata->username=$acuser;
 	$principal_id = aconnect_user_exists($aconnect, $usrdata);

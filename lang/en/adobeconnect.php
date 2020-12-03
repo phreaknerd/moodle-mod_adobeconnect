@@ -70,6 +70,8 @@ $string['selectparticipants'] = 'Assign roles';
 $string['starttime'] = 'Start time';
 $string['usergrouprequired'] = 'This Meeting requires users to be in a group in order to join';
 $string['testconnection'] = 'Test Connection';
+$string['timeout'] = 'Timeout';
+$string['timeout_desc'] = 'Time in milliseconds before the connection to Adobe Connect is considered dead';
 $string['connectiontesttitle'] = 'Connection test window';
 $string['conntestintro'] = '<p>A series of tests have been run in order to determine whether the Adobe Connect Pro server has been properly setup for this integration to work  and to also determine whether the user credentials provided in the activity global settings has the correct permissions to perform the neccessary tasks required by the  activity module.  If any of the tests below have failed, this activity module will not function properly.</p><p> For further assistance and documentation in how to set up your  Adobe Connect Pro server please consult the MoodleDocs help page for this activity module <a href="{$a->url}">Help page</a></p>';
 $string['greaterstarttime'] = 'The start time cannot be greater than the end time';
